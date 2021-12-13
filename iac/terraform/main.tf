@@ -380,7 +380,7 @@ resource "azurerm_key_vault_access_policy" "key_vault_access_policy_sp" {
 
 resource "azurerm_key_vault_secret" "key_vault_secret_sqlpassword" {
   name         = "SQL-PASSWORD"
-  value        = azurerm_container_registry.container_registry.admin_password
+  value        = local.mssql_server_administrator_login_password
   key_vault_id = azurerm_key_vault.key_vault.id
 
   # tags = {
@@ -397,4 +397,9 @@ resource "azurerm_key_vault_secret" "key_vault_secret_sqlpassword" {
       expiration_date
     ]
   }
+
+  # prevents race condition when the secret is getting created before the access policy, causing 401
+  depends_on = [
+    azurerm_key_vault_access_policy.key_vault_access_policy_sp
+  ]
 }
