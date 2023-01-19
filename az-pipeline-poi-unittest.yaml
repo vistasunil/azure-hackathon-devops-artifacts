@@ -1,0 +1,76 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger: none
+
+pool:
+  vmImage: ubuntu-latest
+
+#variables:
+#- group: tfstate 
+#- group: openhack
+
+stages:
+- stage: 
+  jobs:
+  - job: Building_POI_Api
+    displayName: "Build Api"
+    steps:
+    - task: UseDotNet@2
+      displayName: .net installation
+      inputs:
+        packageType: 'sdk'
+        version: 3.1.x
+    - task: DeleteFiles@1
+      displayName: "Delete old test results"
+      inputs:
+        SourceFolder: "$(System.DefaultWorkingDirectory)"
+        Contents: "**/TestResults/**"
+      
+    - task: DotNetCoreCLI@2
+      displayName: "Restore packages"
+      inputs:
+        command: 'restore'
+        feedsToUse: 'select'
+        vstsFeed: 'b42b3659-e337-441a-91cd-7791161ec495'
+        projects: '**/poi.sln'
+    - task: DotNetCoreCLI@2
+      displayName: "Build project"
+      inputs:
+        command: 'build'
+        projects: '**/poi.sln'
+    - task: DotNetCoreCLI@2
+      displayName: Test dotnet
+      inputs:
+        command: 'test'
+        projects: '**/UnitTests/*.csproj'
+        arguments: '--no-build --filter "FullyQualifiedName~UnitTest"'
+        publishTestResults: true
+  
+
+    - task: CreatePRCommentTask@1
+      condition: and(failed(), eq(variables['Build.Reason'] , 'PullRequest')) 
+      inputs:
+        AuthType: 'system'
+        Comment: |
+              ### Unit Test `failure`
+              <details>
+              <summary>Pipeline details</summary>
+
+              Pipeline name: `$(Build.DefinitionName)`
+              Action: `$(Build.Reason)`
+              Job: `$(System.JobName)`
+              PR: [$(System.PullRequest.PullRequestId)]($(System.PullRequest.SourceRepositoryURI)/pullrequest/$(System.PullRequest.PullRequestId))
+              </details>
+
+              Test details: [Run #$(Build.BuildId)]($(System.CollectionUri)$(System.TeamProject)/_build/results?buildId=$(Build.BuildId)&view=ms.vss-test-web.build-test-results-tab)
+              Pusher: @<$(Build.RequestedForId)>
+      
+    - task: CreateWorkItem@1
+      inputs:
+        teamProject: 'devopsoh93938'
+        workItemType: 'Bug'
+        title: 'Test Case failed'
+      condition: and(failed(), eq(variables['Build.Reason'] , 'Manual')) 
