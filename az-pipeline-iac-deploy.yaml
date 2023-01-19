@@ -1,0 +1,95 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+  branches:
+   include:
+     - main
+  paths:
+    include: 
+    - iac/terraform/*
+
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+- group: tfstate 
+- group: openhack
+
+stages:
+- stage: Prepare_Terraform
+  jobs:
+  - job: Install_terraform
+    displayName: "Installing Terraform"
+    steps:
+    - task: TerraformInstaller@0
+      inputs:
+        terraformVersion: 'latest'
+    - task: TerraformCLI@0
+      displayName: Terraform Init
+      inputs:
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/iac/terraform'
+        backendType: 'azurerm'
+        backendServiceArm: 'AzureServiceConnection'
+        backendAzureRmSubscriptionId: '09eabf13-1638-4c9b-95d7-ef9c0550ced9'
+        ensureBackend: true
+        backendAzureRmResourceGroupName: '$(TFSTATE_RESOURCES_GROUP_NAME)'
+        backendAzureRmResourceGroupLocation: '$(LOCATION)'
+        backendAzureRmStorageAccountName: '$(TFSTATE_STORAGE_ACCOUNT_NAME)'
+        backendAzureRmContainerName: '$(TFSTATE_STORAGE_CONTAINER_NAME)'
+        backendAzureRmKey: '$(TFSTATE_KEY)'
+        allowTelemetryCollection: true
+
+    - task: TerraformCLI@0
+      displayName: Terraform Plan Preview
+      inputs:
+        command: 'plan'
+        environmentServiceName: 'AzureServiceConnection'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/iac/terraform'
+        commandOptions: '-var="location=$(LOCATION)" -var="resources_prefix=$(RESOURCES_PREFIX)"'
+        allowTelemetryCollection: true
+
+- stage: Apply_Terraform
+  jobs:
+  - job: manual_approval
+    displayName: "Manual Approval"
+    pool: server
+    steps:
+    - task: ManualValidation@0
+      timeoutInMinutes: 5
+      inputs:
+        notifyUsers: 'hacker2@msftopenhack6771ops.onmicrosoft.com'
+        instructions: 'Approve the terraform apply'
+        onTimeout: "reject"
+
+  - job: terrform_apply
+    displayName: "Terraform Apply"
+    dependsOn: manual_approval  
+    steps:
+    - task: TerraformCLI@0
+      displayName: Terraform Init
+      inputs:
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/iac/terraform'
+        backendType: 'azurerm'
+        backendServiceArm: 'AzureServiceConnection'
+        backendAzureRmSubscriptionId: '09eabf13-1638-4c9b-95d7-ef9c0550ced9'
+        ensureBackend: true
+        backendAzureRmResourceGroupName: '$(TFSTATE_RESOURCES_GROUP_NAME)'
+        backendAzureRmResourceGroupLocation: '$(LOCATION)'
+        backendAzureRmStorageAccountName: '$(TFSTATE_STORAGE_ACCOUNT_NAME)'
+        backendAzureRmContainerName: '$(TFSTATE_STORAGE_CONTAINER_NAME)'
+        backendAzureRmKey: '$(TFSTATE_KEY)'
+        allowTelemetryCollection: true
+    - task: TerraformCLI@0
+      displayName: Terraform Apply Config
+      inputs:
+        command: 'apply'
+        environmentServiceName: 'AzureServiceConnection'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/iac/terraform'
+        allowTelemetryCollection: true
+        commandOptions: '-var="location=$(LOCATION)" -var="resources_prefix=$(RESOURCES_PREFIX)"'
