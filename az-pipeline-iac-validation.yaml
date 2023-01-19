@@ -1,0 +1,59 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger: none
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+- group: tfstate 
+- group: openhack
+
+steps:
+
+- task: TerraformInstaller@0
+  inputs:
+    terraformVersion: 'latest'
+
+- task: TerraformCLI@0
+  displayName: Terraform Init
+  inputs:
+    command: init
+    backendType: azurerm
+    # Service connection to authorize backend access. Supports Subscription & Management Group Scope
+    workingDirectory: '$(System.DefaultWorkingDirectory)/iac/terraform'
+    backendServiceArm: 'AzureServiceConnection'
+    # Subscription id of the target backend. This can be used to specify the subscription when using Management Group scoped
+    # Service connection or to override the subscription id defined in a Subscription scoped service connection
+    backendAzureRmSubscriptionId: '09eabf13-1638-4c9b-95d7-ef9c0550ced9'
+    # create backend storage account if doesn't exist
+    ensureBackend: true
+    backendAzureRmResourceGroupName: $(TFSTATE_RESOURCES_GROUP_NAME)
+    # azure location shortname of the backend resource group and storage account
+    backendAzureRmResourceGroupLocation: $(LOCATION)
+    backendAzureRmStorageAccountName: $(TFSTATE_STORAGE_ACCOUNT_NAME)
+    # azure storage account sku, used when creating the storage account
+    backendAzureRmStorageAccountSku: 'Standard_RAGRS'
+    # azure blob container to store the state file
+    backendAzureRmContainerName: $(TFSTATE_STORAGE_CONTAINER_NAME)
+    # azure blob file name
+    backendAzureRmKey: $(TFSTATE_KEY)
+
+- task: TerraformCLI@0
+  displayName: Terraform Format Check
+  inputs:
+    command: 'fmt'
+    environmentServiceName: 'AzureServiceConnection'
+    workingDirectory: '$(System.DefaultWorkingDirectory)/iac/terraform'
+    allowTelemetryCollection: true
+
+- task: TerraformCLI@0
+  displayName: Terraform Validate
+  inputs:
+    command: 'validate'
+    environmentServiceName: 'AzureServiceConnection'
+    workingDirectory: '$(System.DefaultWorkingDirectory)/iac/terraform'
+    allowTelemetryCollection: true
