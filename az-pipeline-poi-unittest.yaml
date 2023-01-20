@@ -74,3 +74,5 @@ stages:
         workItemType: 'Bug'
         title: 'Test Case failed'
       condition: and(failed(), eq(variables['Build.Reason'] , 'Manual')) 
+
+
