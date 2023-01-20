@@ -50,7 +50,7 @@ stages:
         command: 'plan'
         environmentServiceName: 'AzureServiceConnection'
         workingDirectory: '$(System.DefaultWorkingDirectory)/iac/terraform'
-        commandOptions: '-var="location=$(LOCATION)" -var="resources_prefix=$(RESOURCES_PREFIX)"'
+        commandOptions: '-var="location=$(LOCATION)" -var="resources_prefix=$(RESOURCES_PREFIX)" -var="mssql_server_administrator_login_password=$(TF_MSSQL_SERVER_ADMIN_LOGIN_PASSWORD)"'
         allowTelemetryCollection: true
 
 - stage: Apply_Terraform
@@ -92,4 +92,4 @@ stages:
         environmentServiceName: 'AzureServiceConnection'
         workingDirectory: '$(System.DefaultWorkingDirectory)/iac/terraform'
         allowTelemetryCollection: true
-        commandOptions: '-var="location=$(LOCATION)" -var="resources_prefix=$(RESOURCES_PREFIX)"'
+        commandOptions: '-var="location=$(LOCATION)" -var="resources_prefix=$(RESOURCES_PREFIX)" -var="mssql_server_administrator_login_password=$(TF_MSSQL_SERVER_ADMIN_LOGIN_PASSWORD)"'
